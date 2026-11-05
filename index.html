@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#21172c"><link rel="manifest" href="manifest.webmanifest">
+<title>Vintage Studio Booking Manager</title>
+<style>
+:root{font-family:system-ui,Arial;color:#261d2d;background:#f6f2f8;--p:#704a91;--line:#e7dfeb}
+*{box-sizing:border-box}body{margin:0}header{background:#21172c;color:white;padding:18px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}h1{font-size:19px;margin:0}main{max-width:1050px;margin:20px auto;padding:0 14px}.hero,.panel,.stat{background:white;border:1px solid var(--line);border-radius:15px;padding:16px;margin-bottom:14px}.hero{background:linear-gradient(120deg,#392348,#76518f);color:white;display:flex;justify-content:space-between;align-items:center;gap:12px}.hero p{margin:5px 0 0;color:#e9dff0}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat small{color:#756a7c}.stat b{display:block;font-size:23px}.tabs,.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.tabs{margin:16px 0}.tab,button{border:0;border-radius:10px;padding:10px 13px;background:#eee6f4;color:#4b3260;font-weight:650;cursor:pointer}.tab.active,.primary{background:var(--p);color:white}.mic{background:white;color:#4b3260}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}label{display:block;font-size:13px;color:#746b7a;margin:8px 0 4px}input,select,textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:10px;font:inherit;background:white}.list{display:grid;gap:8px}.item{border:1px solid var(--line);border-radius:11px;padding:12px}.item h3{margin:0 0 5px;font-size:16px}.muted,small{color:#766d7d}.badge{display:inline-block;border-radius:20px;padding:3px 8px;background:#eee6f4;font-size:12px}.hidden{display:none}.day{font-weight:700;margin:12px 0 6px;color:#634779}.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.actions button{font-size:12px;padding:7px 9px}.notice{background:#fff6e4;border:1px solid #f0dfb7;padding:10px;border-radius:10px;font-size:13px}.empty{padding:20px;text-align:center;color:#7a7180;border:1px dashed var(--line);border-radius:10px}
+@media(max-width:650px){.stats{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.hero{align-items:flex-start;flex-direction:column}}
+</style></head><body>
+<header><div><h1>Vintage Studio</h1><small style="color:#d2c5dc">AI Booking Manager · PWA starter</small></div><div class="row"><button onclick="toggleLang()">हिंदी / English</button><button onclick="backup()">Export backup</button></div></header>
+<main>
+<section class="hero"><div><h2 id="welcome">Your studio, one voice away.</h2><p id="sub">Speak or type a booking or inquiry. Review before saving.</p></div><div><button class="mic" id="voice" type="button">🎙️ Speak / बोलें</button><p id="voiceStatus" style="margin:7px 0 0;font-size:12px;color:#f0e8f5" aria-live="polite">Tap Speak and allow microphone access.</p></div></section>
+<div class="stats"><div class="stat"><small>Bookings</small><b id="sB">0</b></div><div class="stat"><small>Open inquiries</small><b id="sI">0</b></div><div class="stat"><small>Outstanding</small><b id="sP">₹0</b></div><div class="stat"><small>Follow-ups due</small><b id="sR">0</b></div></div>
+<div class="tabs"><button class="tab active" data-view="home">Dashboard</button><button class="tab" data-view="bookings">Bookings</button><button class="tab" data-view="inquiries">Inquiries</button><button class="tab" data-view="form">Add record</button></div>
+<section id="home" class="view"><div class="panel"><h3>Upcoming bookings · date order</h3><div id="upcoming" class="list"></div></div><div class="panel"><h3>Follow-ups due</h3><div id="due" class="list"></div><div class="notice">Reminder alerts run while this app is open. Reliable background reminders require hosting/push notification setup. WhatsApp opens a pre-filled message; automatic scheduled sending needs WhatsApp Business API.</div></div></section>
+<section id="bookings" class="view hidden"><div class="panel"><h3>All bookings</h3><input id="search" placeholder="Search name or phone"><div id="bookingList" class="list"></div></div></section>
+<section id="inquiries" class="view hidden"><div class="panel"><h3>Inquiry pipeline</h3><div id="inquiryList" class="list"></div></div></section>
+<section id="form" class="view hidden"><div class="panel"><h3>Add booking / inquiry</h3><div class="grid">
+<div><label>Type</label><select id="kind"><option value="booking">Confirmed booking</option><option value="inquiry">Inquiry</option></select></div>
+<div><label>Customer name *</label><input id="name" placeholder="Priya Sharma"></div>
+<div><label>Phone</label><input id="phone" inputmode="tel"></div><div><label>Event date</label><input id="date" type="date"></div>
+<div><label>Event / service</label><select id="service"><option>Wedding</option><option>Haldi</option><option>Mehendi</option><option>Reception</option><option>Makeup</option><option>Photography</option><option>Other</option></select></div>
+<div><label>Event time</label><input id="time" type="time"></div><div><label>Total amount ₹</label><input id="total" type="number" min="0"></div><div><label>Paid / advance ₹</label><input id="paid" type="number" min="0"></div>
+<div><label>Venue</label><input id="venue"></div><div><label>Inquiry stage</label><select id="stage"><option>New</option><option>Interested</option><option>Quote Sent</option><option>Negotiating</option><option>Date Hold</option><option>Booked</option><option>Lost</option></select></div>
+<div><label>Follow-up reminder</label><input id="reminder" type="datetime-local"></div><div><label>Notes / package</label><input id="notes"></div></div>
+<div class="row" style="margin-top:14px"><button class="primary" onclick="save()">Save record</button><button onclick="clearForm()">Clear</button></div><p id="msg" class="muted"></p></div>
+<div class="panel"><h3>Voice / text command</h3><textarea id="command" rows="3" placeholder="Example: 12 December ko Priya ki wedding booking, 10 baje, total 25000, advance 5000"></textarea><div class="row" style="margin-top:8px"><button onclick="extract()">Fill what can be recognized</button></div><p class="muted">Speech transcript is captured here. Confirm every field before saving. Full natural-language AI extraction is a later backend integration.</p></div></section>
+</main>
+<script>
+const $=x=>document.getElementById(x);let data=JSON.parse(localStorage.getItem('vsData')||'[]'),hi=false;
+function store(){localStorage.setItem('vsData',JSON.stringify(data));render()}
+function money(x){return '₹'+Number(x||0).toLocaleString('en-IN')}
+function dformat(d){return d?new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'Date not set'}
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function view(v){document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));$(v).classList.remove('hidden');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===v));render()}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>view(b.dataset.view));
+function save(){if(!$('name').value.trim())return $('msg').textContent='Customer name is required.';let r={id:Date.now(),kind:$('kind').value,name:$('name').value.trim(),phone:$('phone').value,date:$('date').value,time:$('time').value,service:$('service').value,total:+$('total').value||0,paid:+$('paid').value||0,venue:$('venue').value,stage:$('stage').value,reminder:$('reminder').value,notes:$('notes').value};data.push(r);store();clearForm();$('msg').textContent='Saved successfully.';view(r.kind==='booking'?'bookings':'inquiries')}
+function clearForm(){['name','phone','date','time','total','paid','venue','reminder','notes','command'].forEach(x=>$(x).value='');$('kind').value='booking'}
+function remove(id){if(confirm('Delete this record?')){data=data.filter(x=>x.id!==id);store()}}
+function payment(id){let r=data.find(x=>x.id===id),n=Number(prompt('Additional payment (₹)'));if(n>0){r.paid+=n;store()}}
+function whatsapp(id){let r=data.find(x=>x.id===id);if(!r.phone)return alert('Add phone number first');let p=r.phone.replace(/\D/g,'');if(p.length===10)p='91'+p;open('https://wa.me/'+p+'?text='+encodeURIComponent(`Hello ${r.name}, regarding your ${r.service} booking on ${dformat(r.date)}. Regards, Vintage Studio.`),'_blank')}
+function card(r){let bal=Math.max(0,r.total-r.paid);return `<article class="item"><div class="row" style="justify-content:space-between"><h3>${esc(r.name)}</h3><span class="badge">${r.kind==='booking'?'BOOKED':'INQUIRY'}</span></div><div class="muted">${dformat(r.date)} ${r.time||''} · ${esc(r.service)}</div><div>${esc(r.phone)} ${esc(r.venue)}</div>${r.kind==='booking'?`<p>Total ${money(r.total)} · Paid ${money(r.paid)} · Balance <b>${money(bal)}</b></p>`:`<p>Stage: ${esc(r.stage)}</p>`}${r.reminder?`<small>Reminder: ${new Date(r.reminder).toLocaleString()}</small>`:''}<div class="actions"><button onclick="payment(${r.id})">+ Payment</button><button onclick="whatsapp(${r.id})">WhatsApp</button><button onclick="remove(${r.id})">Delete</button></div></article>`}
+function group(arr){let g={};arr.forEach(r=>(g[r.date||'No date']??=[]).push(r));return Object.entries(g).map(([d,a])=>`<div><div class="day">${d==='No date'?d:dformat(d)} · ${a.length} booking(s)</div>${a.map(card).join('')}</div>`).join('')}
+function render(){let b=data.filter(x=>x.kind==='booking').sort((a,c)=>(a.date||'9999').localeCompare(c.date||'9999')||(a.time||'').localeCompare(c.time||'')),i=data.filter(x=>x.kind==='inquiry'),due=data.filter(x=>x.reminder&&!x.done&&new Date(x.reminder)<=new Date());$('sB').textContent=b.length;$('sI').textContent=i.filter(x=>x.stage!=='Lost').length;$('sP').textContent=money(b.reduce((s,x)=>s+Math.max(0,x.total-x.paid),0));$('sR').textContent=due.length;$('upcoming').innerHTML=group(b.filter(x=>!x.date||x.date>=new Date().toISOString().slice(0,10)))||'<div class="empty">No upcoming bookings</div>';$('due').innerHTML=due.map(card).join('')||'<div class="empty">No follow-ups due</div>';$('bookingList').innerHTML=group(b.filter(x=>(x.name+' '+x.phone).toLowerCase().includes(($('search').value||'').toLowerCase())))||'<div class="empty">No bookings</div>';$('inquiryList').innerHTML=i.map(card).join('')||'<div class="empty">No inquiries</div>'}
+$('search').oninput=render;
+function backup(){let a=document.createElement('a'),u=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.href=u;a.download='vintage-studio-backup.json';a.click();URL.revokeObjectURL(u)}
+function extract(){let t=$('command').value,m=t.match(/(?:total|amount)\s*(?:₹|rs\.?|rupees)?\s*([\d,]+)/i),p=t.match(/(?:advance|paid)\s*(?:₹|rs\.?|rupees)?\s*([\d,]+)/i);if(m)$('total').value=m[1].replace(/,/g,'');if(p)$('paid').value=p[1].replace(/,/g,'');let words=t.match(/(?:for|ki|ka)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);if(words)$('name').value=words[1];$('msg').textContent='Recognized fields only—please review and complete the form.'}
+function toggleLang(){hi=!hi;$('welcome').textContent=hi?'Aapka studio, aapki awaaz se.':'Your studio, one voice away.';$('sub').textContent=hi?'Booking ya inquiry boliye, phir details check karke save karein.':'Speak or type a booking or inquiry. Review before saving.'}
+// Voice input: robust Web Speech API handling for HTTPS + supported browsers.
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let sr=null, listening=false, finalSpeech='';
+function voiceStatus(message){$('voiceStatus').textContent=message}
+function voiceError(error){const messages={
+ 'not-allowed':'Microphone permission blocked. Chrome site settings → Microphone → Allow करें, फिर page reload करें।',
+ 'service-not-allowed':'Speech service blocked है। Chrome में microphone access allow करें।',
+ 'no-speech':'आवाज़ नहीं मिली। Mic के पास साफ बोलकर दोबारा कोशिश करें।',
+ 'audio-capture':'Microphone नहीं मिला। फोन का mic check करें और दूसरी mic app बंद करें।',
+ 'network':'Speech recognition network error। Internet check करके दोबारा कोशिश करें।',
+ 'aborted':'Voice input रोक दिया गया।',
+ 'language-not-supported':'Hindi speech supported नहीं है। Chrome में फिर कोशिश करें।'
+};return messages[error]||('Voice error: '+error+'. दोबारा कोशिश करें।')}
+function voiceButtonState(active){listening=active;$('voice').setAttribute('aria-pressed',String(active));$('voice').textContent=active?'⏹ Stop / रोकें':'🎙️ Speak / बोलें'}
+if(!window.isSecureContext){$('voice').disabled=true;voiceStatus('Voice input के लिए HTTPS वाली Render website खोलें।')}
+else if(!SR){$('voice').disabled=true;voiceStatus('इस browser में Voice Recognition supported नहीं है। Android पर Google Chrome का latest version इस्तेमाल करें।')}
+else{
+ sr=new SR();sr.lang='hi-IN';sr.continuous=false;sr.interimResults=true;sr.maxAlternatives=1;
+ sr.onstart=()=>{voiceButtonState(true);voiceStatus('सुन रहा हूँ… अब booking की जानकारी बोलें।')};
+ sr.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const part=e.results[i][0].transcript;if(e.results[i].isFinal)finalSpeech+=part+' ';else interim+=part}$('command').value=(finalSpeech+interim).trim();view('form')};
+ sr.onerror=e=>voiceStatus(voiceError(e.error));
+ sr.onend=()=>{voiceButtonState(false);if($('command').value.trim())voiceStatus('आपकी आवाज़ text में आ गई है। अब “Fill what can be recognized” दबाएँ और details check करें।');else voiceStatus('Voice input बंद हुआ। दोबारा बोलने के लिए mic दबाएँ।')};
+ $('voice').onclick=()=>{view('form');if(listening){try{sr.stop()}catch(e){voiceStatus('Mic बंद नहीं हुआ। Page reload करके कोशिश करें।')}return}finalSpeech='';try{voiceStatus('Microphone शुरू हो रहा है…');sr.start()}catch(e){voiceStatus(e.name==='InvalidStateError'?'Mic पहले से चालू है। कुछ सेकंड बाद कोशिश करें।':'Mic शुरू नहीं हुआ। Chrome permission check करके दोबारा कोशिश करें।')}};
+}
+
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+function reminders(){let changed=false;data.forEach(r=>{if(r.reminder&&!r.done&&new Date(r.reminder)<=new Date()){r.done=true;changed=true;if('Notification'in window&&Notification.permission==='granted')new Notification('Vintage Studio follow-up',{body:r.name+' · '+r.kind})}});if(changed)store()}
+if('Notification'in window&&Notification.permission==='default')Notification.requestPermission().catch(()=>{});setInterval(reminders,20000);render();
+</script></body></html>
