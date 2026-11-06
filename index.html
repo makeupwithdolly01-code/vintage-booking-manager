@@ -18,116 +18,104 @@
 <section id="inquiries" class="view hidden"><div class="panel"><h3>Inquiry pipeline</h3><div id="inquiryList" class="list"></div></div></section>
 <section id="form" class="view hidden"><div class="panel"><h3>Add booking / inquiry</h3><div class="grid">
 <div><label>Type</label><select id="kind"><option value="booking">Confirmed booking</option><option value="inquiry">Inquiry</option></select></div>
-<div><label>Customer name *</label><input id="name" placeholder="Priya Sharma"></div>
-<div><label>Phone</label><input id="phone" inputmode="tel"></div><div><label>Event date</label><input id="date" type="date"></div>
+<div><label>Customer name *</label><input id="name" placeholder="Priya Sharma" required autocomplete="name"></div>
+<div><label>Mobile Number 1 *</label><input id="phone" type="tel" inputmode="tel" placeholder="10-digit mobile number" required autocomplete="tel"></div><div><label>Mobile Number 2 (optional)</label><input id="phone2" type="tel" inputmode="tel" placeholder="Alternate mobile number" autocomplete="tel"></div><div><label>Event date</label><input id="date" type="date"></div>
 <div><label>Event / service</label><select id="service"><option>Wedding</option><option>Haldi</option><option>Mehendi</option><option>Reception</option><option>Makeup</option><option>Photography</option><option>Other</option></select></div>
 <div><label>Event time</label><input id="time" type="time"></div><div><label>Total amount ₹</label><input id="total" type="number" min="0"></div><div><label>Paid / advance ₹</label><input id="paid" type="number" min="0"></div>
 <div><label>Venue</label><input id="venue"></div><div><label>Inquiry stage</label><select id="stage"><option>New</option><option>Interested</option><option>Quote Sent</option><option>Negotiating</option><option>Date Hold</option><option>Booked</option><option>Lost</option></select></div>
 <div><label>Follow-up reminder</label><input id="reminder" type="datetime-local"></div><div><label>Notes / package</label><input id="notes"></div></div>
 <div class="row" style="margin-top:14px"><button class="primary" onclick="save()">Save record</button><button onclick="clearForm()">Clear</button></div><p id="msg" class="muted"></p></div>
-<div class="panel"><h3>Voice / text command</h3><textarea id="command" rows="3" placeholder="Example: 12 December ko Priya ki wedding booking, 10 baje, total 25000, advance 5000"></textarea><div class="row" style="margin-top:8px"><button onclick="extract()">Fill what can be recognized</button></div><p class="muted">एक बार में नाम, मोबाइल, तारीख, समय, सर्विस, कुल रकम, एडवांस और वेन्यू बोलें। Voice के बाद पहचानी गई जानकारी अपने आप भरेगी। अस्पष्ट जानकारी जाँचें।</p></div></section>
+<div class="panel"><h3>Voice / text command</h3><textarea id="command" rows="3" placeholder="Example: 12 December ko Priya ki wedding booking, 10 baje, total 25000, advance 5000"></textarea><div class="row" style="margin-top:8px"><label for="voiceLang" style="margin:0">Voice language</label><select id="voiceLang" style="width:auto"><option value="hi-IN">Hindi / Hinglish</option><option value="en-IN">English (India)</option></select><button onclick="extract()">Fill form</button></div><p class="muted">Voice transcript yahan aayega. Fields check karein. “save karo” bolne par save hoga; warna Save record dabayein.</p></div></section>
 </main>
 <script>
-const $=x=>document.getElementById(x);let data=JSON.parse(localStorage.getItem('vsData')||'[]'),hi=false;
-function store(){localStorage.setItem('vsData',JSON.stringify(data));render()}
+const $=x=>document.getElementById(x);let data=[];try{const saved=JSON.parse(localStorage.getItem('vsData')||'[]');data=Array.isArray(saved)?saved:[]}catch(e){console.warn('Saved data could not be read',e)}let hi=false;
+function store(){try{localStorage.setItem('vsData',JSON.stringify(data));render();return true}catch(e){$('msg').textContent='सेव नहीं हुआ। Browser storage की जगह खाली करें या Export backup करें।';return false}}
 function money(x){return '₹'+Number(x||0).toLocaleString('en-IN')}
 function dformat(d){return d?new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'Date not set'}
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function view(v){document.querySelectorAll('.view').forEach(x=>x.classList.add('hidden'));$(v).classList.remove('hidden');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.view===v));render()}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>view(b.dataset.view));
 let editingId=null;
-function save(){
- if(!$('name').value.trim())return $('msg').textContent='Customer name is required.';
- const existing=editingId?data.find(x=>x.id===editingId):null;
- let r={id:existing?existing.id:Date.now(),kind:$('kind').value,name:$('name').value.trim(),phone:$('phone').value,date:$('date').value,time:$('time').value,service:$('service').value,total:+$('total').value||0,paid:+$('paid').value||0,venue:$('venue').value,stage:$('stage').value,reminder:$('reminder').value,notes:$('notes').value};
- if(existing){data=data.map(x=>x.id===editingId?r:x)}else{data.push(r)}
- const wasEditing=!!existing;store();clearForm();$('msg').textContent=wasEditing?'Booking updated successfully.':'Saved successfully.';view(r.kind==='booking'?'bookings':'inquiries')
-}
-function editRecord(id){
- const r=data.find(x=>x.id===id);if(!r)return;
- editingId=id;
- ['kind','name','phone','date','time','service','total','paid','venue','stage','reminder','notes'].forEach(k=>$(k).value=r[k]??'');
- $('msg').textContent='Editing existing record. Make changes and tap Update booking.';
- document.querySelector('#form .primary').textContent='Update booking';
- view('form');
-}
-function clearForm(){editingId=null;['name','phone','date','time','total','paid','venue','reminder','notes','command'].forEach(x=>$(x).value='');$('kind').value='booking';document.querySelector('#form .primary').textContent='Save record';$('msg').textContent=''}
+function save(){if(!$('name').value.trim()){ $('msg').textContent='ग्राहक का नाम जरूरी है। नाम भरे बिना Booking Save नहीं होगी।'; $('name').focus(); return; }const p1=$('phone').value.trim();const p1digits=p1.replace(/\D/g,'');if(!p1){$('msg').textContent='पहला Mobile Number जरूरी है। इसके बिना Booking Save नहीं होगी।';$('phone').focus();return;}if(p1digits.length<10||p1digits.length>13){$('msg').textContent='पहला Mobile Number सही दर्ज करें (कम से कम 10 अंक)।';$('phone').focus();return;}let r={id:editingId||Date.now(),kind:$('kind').value,name:$('name').value.trim(),phone:p1,phone2:$('phone2').value.trim(),date:$('date').value,time:$('time').value,service:$('service').value,total:+$('total').value||0,paid:+$('paid').value||0,venue:$('venue').value,stage:$('stage').value,reminder:$('reminder').value,notes:$('notes').value};if(editingId){const at=data.findIndex(x=>x.id===editingId);if(at>=0)data[at]=r;}else data.push(r);if(!store()){if(editingId){/* retain edited values in form */}else data.pop();return}editingId=null;clearForm();$('msg').textContent='Saved successfully.';view(r.kind==='booking'?'bookings':'inquiries')}
+function clearForm(){editingId=null;['name','phone','phone2','date','time','total','paid','venue','reminder','notes','command'].forEach(x=>$(x).value='');$('kind').value='booking'}
+function editRecord(id){const r=data.find(x=>x.id===id);if(!r)return;editingId=id;
+$('kind').value=r.kind||'booking';$('name').value=r.name||'';$('phone').value=r.phone||'';$('phone2').value=r.phone2||'';
+$('date').value=r.date||'';$('time').value=r.time||'';$('service').value=r.service||'Wedding';
+$('total').value=r.total??'';$('paid').value=r.paid??'';$('venue').value=r.venue||'';
+$('stage').value=r.stage||'New';$('reminder').value=r.reminder||'';$('notes').value=r.notes||'';
+$('msg').textContent='Booking edit mode: details change karke Save record dabayein.';view('form');}
 function remove(id){if(confirm('Delete this record?')){data=data.filter(x=>x.id!==id);store()}}
 function payment(id){let r=data.find(x=>x.id===id),n=Number(prompt('Additional payment (₹)'));if(n>0){r.paid+=n;store()}}
-function whatsapp(id){let r=data.find(x=>x.id===id);if(!r.phone)return alert('Add phone number first');let p=r.phone.replace(/\D/g,'');if(p.length===10)p='91'+p;open('https://wa.me/'+p+'?text='+encodeURIComponent(`Hello ${r.name}, regarding your ${r.service} booking on ${dformat(r.date)}. Regards, Vintage Studio.`),'_blank')}
-function card(r){let bal=Math.max(0,r.total-r.paid);return `<article class="item"><div class="row" style="justify-content:space-between"><h3>${esc(r.name)}</h3><span class="badge">${r.kind==='booking'?'BOOKED':'INQUIRY'}</span></div><div class="muted">${dformat(r.date)} ${r.time||''} · ${esc(r.service)}</div><div>${esc(r.phone)} ${esc(r.venue)}</div>${r.kind==='booking'?`<p>Total ${money(r.total)} · Paid ${money(r.paid)} · Balance <b>${money(bal)}</b></p>`:`<p>Stage: ${esc(r.stage)}</p>`}${r.reminder?`<small>Reminder: ${new Date(r.reminder).toLocaleString()}</small>`:''}<div class="actions"><button onclick="editRecord(${r.id})">Edit</button><button onclick="payment(${r.id})">+ Payment</button><button onclick="whatsapp(${r.id})">WhatsApp</button><button onclick="remove(${r.id})">Delete</button></div></article>`}
+function bookingMessage(r){
+ const balance=Math.max(0,(Number(r.total)||0)-(Number(r.paid)||0));
+ return `✨ VINTAGE STUDIO – BOOKING CONFIRMATION ✨\n\nHello ${r.name},\nYour booking details are as follows:\n\n👤 Customer Name: ${r.name}\n📞 Mobile: ${r.phone||'Not provided'}\n📞 Alternate Mobile: ${r.phone2||'Not provided'}\n📅 Event Date: ${r.date?dformat(r.date):'Not decided'}\n⏰ Event Time: ${r.time||'Not decided'}\n💄 Service: ${r.service||'Not specified'}\n📍 Venue: ${r.venue||'Not provided'}\n📦 Package / Notes: ${r.notes||'Not specified'}\n\n💰 Total Amount: ${money(r.total)}\n✅ Advance Paid: ${money(r.paid)}\n💳 Balance Due: ${money(balance)}\n\nBooking Status: ${r.kind==='booking'?'CONFIRMED':'INQUIRY'}\n${r.stage?'Stage: '+r.stage+'\n':''}\nPlease check the details and contact us if any correction is needed.\nThank you for choosing Vintage Studio!`;
+}
+function whatsapp(id){
+ let r=data.find(x=>x.id===id);if(!r)return;
+ if(!r.phone)return alert('WhatsApp par direct bhejne ke liye mobile number chahiye. Number ke bina Share button se Instagram/Facebook ya kisi app par bhej sakte hain.');
+ let p=r.phone.replace(/\D/g,'');if(p.length===10)p='91'+p;
+ open('https://wa.me/'+p+'?text='+encodeURIComponent(bookingMessage(r)),'_blank');
+}
+async function shareBooking(id){
+ let r=data.find(x=>x.id===id);if(!r)return;
+ const text=bookingMessage(r);
+ if(navigator.share){try{await navigator.share({title:'Vintage Studio Booking Confirmation',text});return}catch(e){if(e.name==='AbortError')return;}}
+ copyBooking(id);
+}
+async function copyBooking(id){
+ let r=data.find(x=>x.id===id);if(!r)return;
+ const text=bookingMessage(r);
+ try{await navigator.clipboard.writeText(text);alert('पूरी Booking Details copy हो गई हैं। अब Instagram/Facebook chat में Paste कर दें।')}
+ catch(e){const box=document.createElement('textarea');box.value=text;document.body.appendChild(box);box.select();document.execCommand('copy');box.remove();alert('Booking Details copy हो गई हैं। अब chat में Paste करें।')}
+}
+function card(r){let bal=Math.max(0,r.total-r.paid);return `<article class="item"><div class="row" style="justify-content:space-between"><h3>${esc(r.name)}</h3><span class="badge">${r.kind==='booking'?'BOOKED':'INQUIRY'}</span></div><div class="muted">${dformat(r.date)} ${r.time||''} · ${esc(r.service)}</div><div>${esc(r.phone)} ${r.phone2?(' · '+esc(r.phone2)):''} ${esc(r.venue)}</div>${r.kind==='booking'?`<p>Total ${money(r.total)} · Paid ${money(r.paid)} · Balance <b>${money(bal)}</b></p>`:`<p>Stage: ${esc(r.stage)}</p>`}${r.reminder?`<small>Reminder: ${new Date(r.reminder).toLocaleString()}</small>`:''}<div class="actions"><button onclick="editRecord(${r.id})">Edit</button><button onclick="payment(${r.id})">+ Payment</button><button onclick="whatsapp(${r.id})">WhatsApp details</button><button onclick="shareBooking(${r.id})">Share (Instagram / Facebook)</button><button onclick="copyBooking(${r.id})">Copy details</button><button onclick="remove(${r.id})">Delete</button></div></article>`}
 function group(arr){let g={};arr.forEach(r=>(g[r.date||'No date']??=[]).push(r));return Object.entries(g).map(([d,a])=>`<div><div class="day">${d==='No date'?d:dformat(d)} · ${a.length} booking(s)</div>${a.map(card).join('')}</div>`).join('')}
-function render(){let b=data.filter(x=>x.kind==='booking').sort((a,c)=>(a.date||'9999').localeCompare(c.date||'9999')||(a.time||'').localeCompare(c.time||'')),i=data.filter(x=>x.kind==='inquiry'),due=data.filter(x=>x.reminder&&!x.done&&new Date(x.reminder)<=new Date());$('sB').textContent=b.length;$('sI').textContent=i.filter(x=>x.stage!=='Lost').length;$('sP').textContent=money(b.reduce((s,x)=>s+Math.max(0,x.total-x.paid),0));$('sR').textContent=due.length;$('upcoming').innerHTML=group(b.filter(x=>!x.date||x.date>=new Date().toISOString().slice(0,10)))||'<div class="empty">No upcoming bookings</div>';$('due').innerHTML=due.map(card).join('')||'<div class="empty">No follow-ups due</div>';$('bookingList').innerHTML=group(b.filter(x=>(x.name+' '+x.phone).toLowerCase().includes(($('search').value||'').toLowerCase())))||'<div class="empty">No bookings</div>';$('inquiryList').innerHTML=i.map(card).join('')||'<div class="empty">No inquiries</div>'}
+function render(){let b=data.filter(x=>x.kind==='booking').sort((a,c)=>(a.date||'9999').localeCompare(c.date||'9999')||(a.time||'').localeCompare(c.time||'')),i=data.filter(x=>x.kind==='inquiry'),due=data.filter(x=>x.reminder&&!x.done&&new Date(x.reminder)<=new Date());$('sB').textContent=b.length;$('sI').textContent=i.filter(x=>x.stage!=='Lost').length;$('sP').textContent=money(b.reduce((s,x)=>s+Math.max(0,x.total-x.paid),0));$('sR').textContent=due.length;$('upcoming').innerHTML=group(b.filter(x=>!x.date||x.date>=new Date().toISOString().slice(0,10)))||'<div class="empty">No upcoming bookings</div>';$('due').innerHTML=due.map(card).join('')||'<div class="empty">No follow-ups due</div>';$('bookingList').innerHTML=group(b.filter(x=>(x.name+' '+x.phone+' '+(x.phone2||'')).toLowerCase().includes(($('search').value||'').toLowerCase())))||'<div class="empty">No bookings</div>';$('inquiryList').innerHTML=i.map(card).join('')||'<div class="empty">No inquiries</div>'}
 $('search').oninput=render;
 function backup(){let a=document.createElement('a'),u=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.href=u;a.download='vintage-studio-backup.json';a.click();URL.revokeObjectURL(u)}
 function extract(){
- const t=$('command').value.trim();if(!t){$('msg').textContent='पहले बोलें या booking की जानकारी लिखें।';return}
- const set=(id,v)=>{if(v!==undefined&&v!==null&&String(v).trim()!=='')$(id).value=String(v).trim()};
- const num=x=>String(x||'').replace(/[^\d]/g,'');
- let m;
- // Explicit labels are safest; use the spoken context to avoid guessing.
- m=t.match(/(?:नाम|customer\s*name|name)\s*(?:है|is|:)?\s*([\p{L}][\p{L} .'-]{1,45})/iu);
- if(m)set('name',m[1].replace(/\s+(?:फोन|मोबाइल|phone|mobile|की|का|कि|date|दिनांक).*$/iu,'').trim());
- m=t.match(/(?:मोबाइल|फोन|phone|mobile|number|नंबर)\s*(?:है|is|:)?\s*(\+?[\d][\d\s-]{8,15})/iu);
- if(m)set('phone',num(m[1]).slice(-10));
- if(!m){m=t.match(/(?:\+?91[\s-]?)?([6-9]\d{9})/);if(m)set('phone',m[1])}
- m=t.match(/(?:total|amount|कुल|टोटल|रकम|price|कीमत)\s*(?:है|is|:)?\s*(?:₹|rs\.?|rupees)?\s*([\d,]+)/iu);
- if(m)set('total',num(m[1]));
- m=t.match(/(?:advance|paid|अग्रिम|एडवांस|जमा|पेमेंट)\s*(?:है|is|:)?\s*(?:₹|rs\.?|rupees)?\s*([\d,]+)/iu);
- if(m)set('paid',num(m[1]));
- m=t.match(/(?:venue|address|location|जगह|लोकेशन|पता)\s*(?:है|is|:)?\s*([^,;.!।]+)/iu);
- if(m)set('venue',m[1]);
- m=t.match(/(?:time|समय|बजे)\s*(?:है|is|:)?\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|बजे|सुबह|शाम|दोपहर)?/iu);
- if(!m)m=t.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|बजे|सुबह|शाम|दोपहर)/iu);
- if(m){let h=+m[1],mi=m[2]||'00',ap=(m[3]||'').toLowerCase();if(/pm|शाम|दोपहर/.test(ap)&&h<12)h+=12;if(/am|सुबह/.test(ap)&&h===12)h=0;if(h<24)set('time',String(h).padStart(2,'0')+':'+mi)}
- // Dates: ISO, DD/MM/YYYY, or day + English/Hindi month.
- m=t.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
- if(m)set('date',`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`);
- else if((m=t.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d{2})\b/)))set('date',`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`);
- else{
-  const months={january:1,jan:1,february:2,feb:2,march:3,mar:3,april:4,apr:4,may:5,june:6,jun:6,july:7,jul:7,august:8,aug:8,september:9,sep:9,october:10,oct:10,november:11,nov:11,december:12,dec:12,जनवरी:1,फरवरी:2,मार्च:3,अप्रैल:4,मई:5,जून:6,जुलाई:7,अगस्त:8,सितंबर:9,अक्टूबर:10,नवंबर:11,दिसंबर:12};
-  const monthPattern=Object.keys(months).join('|');
-  m=t.match(new RegExp('(?: on | date | तारीख )?(\\d{1,2})\\s*('+monthPattern+')\\s*(20\\d{2})?','i'));
-  if(m){let y=+(m[3]||new Date().getFullYear()),mo=months[m[2].toLowerCase()],d=+m[1];if(!m[3]&&new Date(y,mo-1,d)<new Date(new Date().toDateString()))y++;set('date',`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`)}
- }
- const low=t.toLowerCase();
- const services=[['Wedding',/wedding|शादी|विवाह/],['Haldi',/haldi|हल्दी/],['Mehendi',/mehndi|mehendi|मेहंदी/],['Reception',/reception|रिसेप्शन/],['Makeup',/make.?up|मेकअप/],['Photography',/photo|photography|फोटोग्राफी/],['Other',/other|अन्य/]];
- for(const [v,re] of services)if(re.test(low)){set('service',v);break}
- if(/inquiry|enquiry|पूछताछ|इन्क्वायरी/.test(low))set('kind','inquiry');
- m=t.match(/(?:notes?|package|नोट्स?|पैकेज)\s*(?:है|is|:)?\s*(.+)$/iu);if(m)set('notes',m[1]);
- // If a label wasn't spoken, recognize a common "Priya ki wedding booking" pattern.
- if(!$('name').value.trim()){
-  m=t.match(/([\p{Lu}][\p{L}]{1,20}(?:\s+[\p{Lu}][\p{L}]{1,20})?)\s+(?:ki|ka|ke|की|का|के)\s+(?:wedding|haldi|mehndi|mehendi|शादी|हल्दी|मेहंदी)/u);
-  if(m)set('name',m[1]);
- }
- $('msg').textContent='जितनी जानकारी पहचानी गई है, वह भर दी गई है। बाकी खाली Fields खुद जाँचकर भरें। Save करने से पहले सब details verify करें।';
+ let t=$('command').value.trim();
+ if(!t){$('msg').textContent='पहले बोलें या टेक्स्ट लिखें।';return false}
+ const cleanNum=s=>s.replace(/,/g,'');
+ const totalMatch=t.match(/(?:total|amount|kul|कुल|टोटल|रकम|पूरे पैसे|कुल पैसे)\s*(?:₹|rs\.?|rupees|रुपये)?\s*([\d,]+)/i);
+ const paidMatch=t.match(/(?:advance|paid|अडवांस|एडवांस|जमा|पहले दिए|पेमेंट)\s*(?:₹|rs\.?|rupees|रुपये)?\s*([\d,]+)/i);
+ if(totalMatch)$('total').value=cleanNum(totalMatch[1]);
+ if(paidMatch)$('paid').value=cleanNum(paidMatch[1]);
+ const ph=t.match(/(?:\+?91[\s-]?)?([6-9]\d{9})/);if(ph)$('phone').value=ph[1];
+ // Name patterns: "Priya ki wedding", "Priya Sharma की booking", "booking for Priya".
+ let nm=t.match(/(?:customer\s*name|name|naam|नाम|ग्राहक का नाम)\s*(?:is|है|:)?\s*([a-zA-Z][a-zA-Z .'-]{1,35}?)(?=\s+(?:phone|mobile|number|date|on|की|का|के|wedding|makeup|मेहंदी|शादी|फोन|मोबाइल)\b|[,।]|$)/i);
+ if(!nm) nm=t.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s+(?:की|का|के|ki|ka|ke)\s+(?:wedding|booking|बुकिंग|शादी|makeup|मेहंदी|हल्दी)/i);
+ if(!nm) nm=t.match(/(?:for|के लिए|की बुकिंग)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/i);
+ if(nm)$('name').value=nm[1].trim();
+ const serviceMap=[[/wedding|शादी|वेडिंग|दुल्हन/i,'Wedding'],[/haldi|हल्दी/i,'Haldi'],[/mehndi|mehandi|मेहंदी|मेहन्दी/i,'Mehendi'],[/reception|रिसेप्शन/i,'Reception'],[/make.?up|मेकअप/i,'Makeup'],[/photo.?graph|फोटोग्राफी/i,'Photography']];
+ for(const [re,val] of serviceMap){if(re.test(t)){$('service').value=val;break}}
+ if(/inquiry|enquiry|पूछताछ|सिर्फ पूछ|जानकारी चाहिए/i.test(t))$('kind').value='inquiry';else if(/booking|बुकिंग|पक्का|कन्फर्म|confirm/i.test(t))$('kind').value='booking';
+ let d=t.match(/(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?/);
+ if(d){let day=+d[1],month=+d[2],year=d[3]?+d[3]:new Date().getFullYear();if(year<100)year+=2000;if(day>=1&&day<=31&&month>=1&&month<=12){const dt=new Date(year,month-1,day);if(dt.getFullYear()===year&&dt.getMonth()===month-1&&dt.getDate()===day)$('date').value=`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`}}
+ else{const months={'january':1,'jan':1,'february':2,'feb':2,'march':3,'mar':3,'april':4,'apr':4,'may':5,'june':6,'jun':6,'july':7,'jul':7,'august':8,'aug':8,'september':9,'sep':9,'october':10,'oct':10,'november':11,'nov':11,'december':12,'dec':12,'जनवरी':1,'फरवरी':2,'मार्च':3,'अप्रैल':4,'मई':5,'जून':6,'जुलाई':7,'अगस्त':8,'सितंबर':9,'अक्टूबर':10,'नवंबर':11,'दिसंबर':12};const dm=t.match(/\b(\d{1,2})\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)\b/i)||t.match(/(\d{1,2})\s*(जनवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|अक्टूबर|नवंबर|दिसंबर)/);if(dm){let mo=months[dm[2].toLowerCase()]||months[dm[2]],yr=new Date().getFullYear(),day=+dm[1],candidate=new Date(yr,mo-1,day);if(candidate<new Date(new Date().toDateString()))yr++;if(candidate.getMonth()===mo-1&&day>=1&&day<=31)$('date').value=`${yr}-${String(mo).padStart(2,'0')}-${String(day).padStart(2,'0')}`}}
+ let tm=t.match(/(?:\b(?:at|time)\b|समय|सुबह|दोपहर|शाम|रात)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|बजे)?/i)||t.match(/\b(\d{1,2}):(\d{2})\s*(am|pm)?\b/i)||t.match(/\b(\d{1,2})\s*(am|pm|बजे|सुबह|दोपहर|शाम|रात)\b/i);
+ if(tm){let h=+tm[1],min=+(tm[2]||0),period=(tm[3]||'').toLowerCase();if((period==='pm'||period==='शाम'||period==='रात'||period==='दोपहर')&&h<12)h+=12;if((period==='am'||period==='सुबह')&&h===12)h=0;if(h<=23&&min<=59)$('time').value=`${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`}
+ let venue=t.match(/(?:venue|location|जगह|स्थान|हॉल)\s*(?:is|है|:)?\s*([^,।]+)/i);if(venue)$('venue').value=venue[1].trim();
+ $('msg').textContent=$('name').value?'पहचानी गई जानकारी फॉर्म में भर दी गई है। जांचें और Save record दबाएँ।':'बाकी जानकारी भरी गई है, लेकिन ग्राहक का नाम नहीं मिला। नाम हाथ से भरें।';return true;
 }
 function toggleLang(){hi=!hi;$('welcome').textContent=hi?'Aapka studio, aapki awaaz se.':'Your studio, one voice away.';$('sub').textContent=hi?'Booking ya inquiry boliye, phir details check karke save karein.':'Speak or type a booking or inquiry. Review before saving.'}
-// Voice input: robust Web Speech API handling for HTTPS + supported browsers.
+// Voice input. Web Speech recognition requires HTTPS (or localhost) and a supported browser.
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let sr=null, listening=false, finalSpeech='';
+let sr=null,listening=false,finalSpeech='';
 function voiceStatus(message){$('voiceStatus').textContent=message}
-function voiceError(error){const messages={
- 'not-allowed':'Microphone permission blocked. Chrome site settings → Microphone → Allow करें, फिर page reload करें।',
- 'service-not-allowed':'Speech service blocked है। Chrome में microphone access allow करें।',
- 'no-speech':'आवाज़ नहीं मिली। Mic के पास साफ बोलकर दोबारा कोशिश करें।',
- 'audio-capture':'Microphone नहीं मिला। फोन का mic check करें और दूसरी mic app बंद करें।',
- 'network':'Speech recognition network error। Internet check करके दोबारा कोशिश करें।',
- 'aborted':'Voice input रोक दिया गया।',
- 'language-not-supported':'Hindi speech supported नहीं है। Chrome में फिर कोशिश करें।'
-};return messages[error]||('Voice error: '+error+'. दोबारा कोशिश करें।')}
+function voiceError(error){const messages={'not-allowed':'Microphone permission blocked. Chrome site settings → Microphone → Allow करें, फिर page reload करें।','service-not-allowed':'Speech service blocked है। Chrome में microphone access allow करें।','no-speech':'आवाज़ नहीं मिली। Mic के पास साफ बोलकर दोबारा कोशिश करें।','audio-capture':'Microphone नहीं मिला। फोन का mic check करें।','network':'Speech recognition network error। Internet check करके दोबारा कोशिश करें।','aborted':'Voice input रोक दिया गया।','language-not-supported':'यह voice language supported नहीं है। Language बदलकर कोशिश करें।'};return messages[error]||('Voice error: '+error+'. दोबारा कोशिश करें।')}
 function voiceButtonState(active){listening=active;$('voice').setAttribute('aria-pressed',String(active));$('voice').textContent=active?'⏹ Stop / रोकें':'🎙️ Speak / बोलें'}
-if(!window.isSecureContext){$('voice').disabled=true;voiceStatus('Voice input के लिए HTTPS वाली Render website खोलें।')}
-else if(!SR){$('voice').disabled=true;voiceStatus('इस browser में Voice Recognition supported नहीं है। Android पर Google Chrome का latest version इस्तेमाल करें।')}
+if(!window.isSecureContext){$('voice').disabled=true;voiceStatus('Voice के लिए app को HTTPS website पर खोलें (file:// से नहीं)।')}
+else if(!SR){$('voice').disabled=true;voiceStatus('इस browser में Voice Recognition नहीं है। Android पर latest Google Chrome इस्तेमाल करें।')}
 else{
- sr=new SR();sr.lang='hi-IN';sr.continuous=false;sr.interimResults=true;sr.maxAlternatives=1;
+ sr=new SR();sr.lang=$('voiceLang')?.value||'hi-IN';sr.continuous=false;sr.interimResults=true;sr.maxAlternatives=1;
+ $('voiceLang').addEventListener('change',()=>{if(!listening)sr.lang=$('voiceLang').value});
  sr.onstart=()=>{voiceButtonState(true);voiceStatus('सुन रहा हूँ… अब booking की जानकारी बोलें।')};
- sr.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const part=e.results[i][0].transcript;if(e.results[i].isFinal)finalSpeech+=part+' ';else interim+=part}$('command').value=(finalSpeech+interim).trim();view('form')};
+ sr.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const part=e.results[i][0].transcript;if(e.results[i].isFinal)finalSpeech+=part+' ';else interim+=part}$('command').value=(finalSpeech+interim).trim()};
  sr.onerror=e=>voiceStatus(voiceError(e.error));
- sr.onend=()=>{voiceButtonState(false);if($('command').value.trim()){extract();voiceStatus('आवाज़ समझ ली गई। Form भरा गया है—कृपया details जाँचें।')}else voiceStatus('आवाज़ नहीं मिली। शांत जगह में mic के पास बोलकर फिर कोशिश करें।')};
- $('voice').onclick=()=>{view('form');if(listening){try{sr.stop()}catch(e){voiceStatus('Mic बंद नहीं हुआ। Page reload करके कोशिश करें।')}return}finalSpeech='';try{voiceStatus('Microphone शुरू हो रहा है…');sr.start()}catch(e){voiceStatus(e.name==='InvalidStateError'?'Mic पहले से चालू है। कुछ सेकंड बाद कोशिश करें।':'Mic शुरू नहीं हुआ। Chrome permission check करके दोबारा कोशिश करें।')}};
+ sr.onend=()=>{voiceButtonState(false);if($('command').value.trim()){extract();const said=$('command').value;if(/\b(save|save it|save record)\b|सेव करो|सेव कर दो|सहेज दो/i.test(said)){if($('name').value.trim()){save();voiceStatus('आवाज़ से जानकारी भरकर रिकॉर्ड सेव कर दिया गया।')}else voiceStatus('नाम नहीं मिला। नाम भरकर Save record दबाएँ।')}else voiceStatus('फॉर्म भर दिया गया है। जानकारी जांचकर Save record दबाएँ।')}else voiceStatus('Voice input बंद हुआ। दोबारा बोलने के लिए mic दबाएँ।')};
+ $('voice').onclick=()=>{view('form');if(listening){try{sr.stop()}catch(e){voiceStatus('Mic बंद नहीं हुआ। Page reload करके कोशिश करें।')}return}finalSpeech='';sr.lang=$('voiceLang').value;try{voiceStatus('Microphone शुरू हो रहा है…');sr.start()}catch(e){voiceStatus(e.name==='InvalidStateError'?'Mic पहले से चालू है। कुछ सेकंड बाद कोशिश करें।':'Mic शुरू नहीं हुआ। Chrome permission check करके दोबारा कोशिश करें।')}};
 }
-
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 function reminders(){let changed=false;data.forEach(r=>{if(r.reminder&&!r.done&&new Date(r.reminder)<=new Date()){r.done=true;changed=true;if('Notification'in window&&Notification.permission==='granted')new Notification('Vintage Studio follow-up',{body:r.name+' · '+r.kind})}});if(changed)store()}
 if('Notification'in window&&Notification.permission==='default')Notification.requestPermission().catch(()=>{});setInterval(reminders,20000);render();
